@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notas de Entrega</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #121212;
+            color: #e0e0e0;
+            text-align: center;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: #1e1e1e;
+        }
+        th, td {
+            border: 1px solid #333;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #333;
+            cursor: pointer;
+        }
+        input, button, select {
+            margin-top: 10px;
+            margin-bottom: 10px;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        input, select {
+            background-color: #333;
+            color: #e0e0e0;
+        }
+        button {
+            background-color: #6200ea;
+            color: #fff;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #3700b3;
+        }
+        #topbuttom {
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <button id="topbuttom" onclick="window.location.href='Main.html'">Voltar ao Dashboard</button>
+    <button id="topbuttom" onclick="window.location.href='Inventario.html'">Ir para Inventário de Produtos</button>
+    <button id="topbuttom" onclick="window.location.href='Gastos CO-GPT 3.0.html'">Ir para Lista de Gastos</button>
+    
+    <h2>Notas de Entrega</h2>
+    <h3>Selecionar Estabelecimento</h3>
+    <select id="perfilEstabelecimento" onchange="trocarEstabelecimento()">
+        <option value="">Selecione um estabelecimento</option>
+    </select>
+    <input type="text" id="novoEstabelecimento" placeholder="Novo Estabelecimento">
+    <button onclick="adicionarEstabelecimento()">Adicionar</button>
+    
+    <h3>Adicionar Nova Nota</h3>
+    <input type="date" id="dataEntrega">
+    <input type="text" id="descricao" placeholder="Descrição do Produto">
+    <input type="number" id="quantidade" placeholder="Quantidade de Bolos">
+    <input type="number" id="valor" placeholder="Valor Total (R$)">
+    <button onclick="adicionarNota()">Adicionar</button>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>Data</th>
+                <th>Descrição</th>
+                <th>Quantidade</th>
+                <th>Valor</th>
+                <th>Ação</th>
+            </tr>
+        </thead>
+        <tbody id="corpoTabela"></tbody>
+    </table>
+    
+    <h3 id="totalValor">Total: R$ 0.00</h3>
+    
+    <button id="topbuttom" onclick="gerarPDF()">Gerar PDF</button>
+    
+    <script>
+        let perfis = JSON.parse(localStorage.getItem("perfis")) || {};
+        let estabelecimentoAtual = localStorage.getItem("estabelecimentoAtual") || "";
+
+        function salvarPerfis() {
+            localStorage.setItem("perfis", JSON.stringify(perfis));
+        }
+
+        function carregarPerfis() {
+            let select = document.getElementById("perfilEstabelecimento");
+            select.innerHTML = '<option value="">Selecione um estabelecimento</option>';
+            for (let perfil in perfis) {
+                let option = document.createElement("option");
+                option.value = perfil;
+                option.innerText = perfil;
+                if (perfil === estabelecimentoAtual) {
+                    option.selected = true;
+                }
+                select.appendChild(option);
+            }
+            carregarTabela();
+        }
+
+        function adicionarEstabelecimento() {
+            let nome = document.getElementById("novoEstabelecimento").value;
+            if (nome && !perfis[nome]) {
+                perfis[nome] = [];
+                estabelecimentoAtual = nome;
+                localStorage.setItem("estabelecimentoAtual", nome);
+                salvarPerfis();
+                carregarPerfis();
+            }
+        }
+
+        function trocarEstabelecimento() {
+            estabelecimentoAtual = document.getElementById("perfilEstabelecimento").value;
+            localStorage.setItem("estabelecimentoAtual", estabelecimentoAtual);
+            carregarTabela();
+        }
+
+        function carregarTabela() {
+            let tabela = document.getElementById("corpoTabela");
+            tabela.innerHTML = "";
+            let total = 0;
+            if (estabelecimentoAtual && perfis[estabelecimentoAtual]) {
+                perfis[estabelecimentoAtual].forEach((nota, index) => {
+                    let linha = tabela.insertRow();
+                    linha.insertCell(0).innerText = formatarData(nota.dataEntrega);
+                    linha.insertCell(1).innerText = nota.descricao;
+                    linha.insertCell(2).innerText = nota.quantidade;
+                    linha.insertCell(3).innerText = `R$ ${parseFloat(nota.valor).toFixed(2)}`;
+                    total += parseFloat(nota.valor);
+                    let botaoExcluir = document.createElement("button");
+                    botaoExcluir.innerText = "Excluir";
+                    botaoExcluir.onclick = () => excluirNota(index);
+                    linha.insertCell(4).appendChild(botaoExcluir);
+                });
+            }
+            document.getElementById("totalValor").innerText = `Total: R$ ${total.toFixed(2)}`;
+        }
+
+        function adicionarNota() {
+            if (!estabelecimentoAtual) return;
+            let dataEntrega = document.getElementById("dataEntrega").value;
+            let descricao = document.getElementById("descricao").value;
+            let quantidade = document.getElementById("quantidade").value;
+            let valor = document.getElementById("valor").value;
+            if (dataEntrega && descricao && quantidade && valor) {
+                perfis[estabelecimentoAtual].push({ dataEntrega, descricao, quantidade: parseInt(quantidade), valor: parseFloat(valor) });
+                salvarPerfis();
+                carregarTabela();
+                // Clear input fields after adding the note
+                document.getElementById("dataEntrega").value = "";
+                document.getElementById("descricao").value = "";
+                document.getElementById("quantidade").value = "";
+                document.getElementById("valor").value = "";
+            }
+        }
+
+        function excluirNota(index) {
+            perfis[estabelecimentoAtual].splice(index, 1);
+            salvarPerfis();
+            carregarTabela();
+        }
+
+        function gerarPDF() {
+            let janela = window.open("", "", "width=800,height=600");
+            let conteudo = `<html><head><title>Notas de Entrega PDF</title></head><body>`;
+            conteudo += `<h2>Florentino</h2><h3>Notas de Entrega - ${estabelecimentoAtual}</h3>`;
+            conteudo += `<table border='1' style='width:100%; border-collapse:collapse; text-align:left;'>`;
+            conteudo += `<tr><th>Data</th><th>Descrição</th><th>Quantidade</th><th>Valor</th></tr>`;
+            let total = 0;
+            perfis[estabelecimentoAtual].forEach(nota => {
+                conteudo += `<tr>`;
+                conteudo += `<td>${formatarData(nota.dataEntrega)}</td>`;
+                conteudo += `<td>${nota.descricao}</td>`;
+                conteudo += `<td>${nota.quantidade}</td>`;
+                conteudo += `<td>R$ ${parseFloat(nota.valor).toFixed(2)}</td>`;
+                conteudo += `</tr>`;
+                total += parseFloat(nota.valor);
+            });
+            conteudo += `</table>`;
+            conteudo += `<h3>Total: R$ ${total.toFixed(2)}</h3>`;
+            conteudo += `</body></html>`;
+            janela.document.write(conteudo);
+            janela.document.close();
+            janela.print();
+        }
+
+        function formatarData(data) {
+            let partes = data.split("-");
+            return `${partes[2]}/${partes[1]}/${partes[0]}`;
+        }
+
+        carregarPerfis();
+    </script>
+</body>
+</html>

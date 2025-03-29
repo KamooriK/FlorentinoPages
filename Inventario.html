@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventário de Produtos</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #121212;
+            color: #e0e0e0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: #1e1e1e;
+        }
+        th, td {
+            border: 1px solid #333;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #333;
+            cursor: pointer;
+        }
+        input, button {
+            margin-top: 10px;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        input {
+            background-color: #333;
+            color: #e0e0e0;
+        }
+        button {
+            background-color: #6200ea;
+            color: #fff;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #3700b3;
+        }
+        #topbuttom {
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <button id="topbuttom" onclick="window.location.href='Main.html'">Voltar ao Dashboard</button>
+    <h2>Inventário de Produtos</h2>
+    <button id="topbuttom" onclick="gerarPDF()">Gerar PDF</button>
+    <button id="topbuttom" onclick="restaurarUltimoInventario()">Restaurar Último Inventário</button>
+    <button id="topbuttom" onclick="window.location.href='Gastos CO-GPT 3.0.html'">Ir para Lista de Gastos</button>
+    <button id="topbuttom" onclick="window.location.href='Nota.html'">Ir para Notas de Entrega</button>
+    <table id="tabela">
+        <thead>
+            <tr>
+                <th onclick="ordenarTabela(0)">Produto</th>
+                <th onclick="ordenarTabela(1)">Quantidade</th>
+                <th onclick="ordenarTabela(2)">Data de Entrada</th>
+                <th onclick="ordenarTabela(3)">Validade</th>
+                <th>Ação</th>
+            </tr>
+        </thead>
+        <tbody id="corpoTabela"></tbody>
+    </table>
+
+    <h3>Adicionar Novo Produto</h3>
+    <input type="text" id="produto" placeholder="Nome do Produto">
+    <input type="number" id="quantidade" placeholder="Quantidade">
+    <input type="date" id="dataEntrada">
+    <input type="date" id="validade">
+    <button onclick="adicionarProduto()">Adicionar</button>
+
+    <script>
+        let inventario = JSON.parse(localStorage.getItem("inventario")) || [];
+        let ultimoInventario = JSON.parse(localStorage.getItem("ultimoInventario")) || [];
+
+        function salvarInventario() {
+            localStorage.setItem("inventario", JSON.stringify(inventario));
+        }
+
+        function salvarUltimoInventario() {
+            localStorage.setItem("ultimoInventario", JSON.stringify(inventario));
+        }
+
+        function restaurarUltimoInventario() {
+            inventario = JSON.parse(localStorage.getItem("ultimoInventario")) || [];
+            salvarInventario();
+            carregarTabela();
+        }
+
+        function carregarTabela() {
+            let tabela = document.getElementById("corpoTabela");
+            tabela.innerHTML = "";
+            inventario.forEach((item, index) => {
+                let linha = tabela.insertRow();
+                linha.insertCell(0).innerText = item.produto;
+                linha.insertCell(1).innerText = item.quantidade;
+                linha.insertCell(2).innerText = item.dataEntrada ? formatarData(item.dataEntrada) : "-";
+                linha.insertCell(3).innerText = item.validade ? formatarData(item.validade) : "-";
+                let botaoExcluir = document.createElement("button");
+                botaoExcluir.innerText = "Excluir";
+                botaoExcluir.onclick = () => excluirProduto(index);
+                linha.insertCell(4).appendChild(botaoExcluir);
+            });
+        }
+
+        function formatarData(data) {
+            if (!data) return "-";
+            let partes = data.split("-");
+            return partes.length === 3 ? `${partes[2]}/${partes[1]}/${partes[0]}` : "-";
+        }
+
+        function ordenarTabela(coluna) {
+            inventario.sort((a, b) => {
+                let v1 = Object.values(a)[coluna] || "";
+                let v2 = Object.values(b)[coluna] || "";
+                return isNaN(v1) ? v1.localeCompare(v2) : v1 - v2;
+            });
+            salvarInventario();
+            carregarTabela();
+        }
+
+        function adicionarProduto() {
+            let produto = document.getElementById("produto").value;
+            let quantidade = document.getElementById("quantidade").value;
+            let dataEntrada = document.getElementById("dataEntrada").value;
+            let validade = document.getElementById("validade").value;
+            if (produto && quantidade) {
+                inventario.push({ produto, quantidade, dataEntrada, validade });
+                salvarInventario();
+                carregarTabela();
+            }
+        }
+
+        function excluirProduto(index) {
+            inventario.splice(index, 1);
+            salvarInventario();
+            carregarTabela();
+        }
+
+        function gerarPDF() {
+            salvarUltimoInventario();
+            let janela = window.open("", "", "width=800,height=600");
+            let conteudo = `<html><head><title>Inventário PDF</title></head><body>`;
+            conteudo += `<h2>Inventário de Produtos</h2>`;
+            conteudo += `<table border='1' style='width:100%; border-collapse:collapse; text-align:left;'>`;
+            conteudo += `<tr><th>Produto</th><th>Quantidade</th><th>Data de Entrada</th><th>Validade</th></tr>`;
+            inventario.forEach(item => {
+                conteudo += `<tr>`;
+                conteudo += `<td>${item.produto}</td>`;
+                conteudo += `<td>${item.quantidade}</td>`;
+                conteudo += `<td>${formatarData(item.dataEntrada)}</td>`;
+                conteudo += `<td>${formatarData(item.validade)}</td>`;
+                conteudo += `</tr>`;
+            });
+            conteudo += `</table>`;
+            conteudo += `</body></html>`;
+            janela.document.write(conteudo);
+            janela.document.close();
+            janela.print();
+            inventario = [];
+            salvarInventario();
+            carregarTabela();
+        }
+
+        carregarTabela();
+    </script>
+</body>
+</html>
